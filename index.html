@@ -67,11 +67,23 @@
     };
   </script>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:wght@400;500;600;700&amp;family=Red+Hat+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+  <!-- GSAP & ScrollTrigger -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
   <style>
     html, body {
       overflow-x: hidden;
+      max-width: 100vw;
       width: 100%;
       -webkit-text-size-adjust: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Universal responsive viewport height fallback */
+    .viewport-screen {
+      height: 100vh;
+      height: 100svh;
+      height: 100dvh;
     }
 
     .parallax-layer {
@@ -89,27 +101,81 @@
       mask-image: linear-gradient(to left, rgba(0, 0, 0, 1) 20%, rgba(0, 0, 0, 0.6) 52%, rgba(0, 0, 0, 0.18) 76%, rgba(0, 0, 0, 0) 98%);
     }
 
-    @media (max-width: 1023px) {
-      .fade-mask-right,
-      .fade-mask-left {
-        -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 100%);
-        mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 100%);
+    /* Tablet & Desktop (>= 768px): clean horizontal mask */
+    @media (min-width: 768px) {
+      .fade-mask-right {
+        -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 1) 40%, rgba(0, 0, 0, 0.7) 68%, rgba(0, 0, 0, 0.2) 86%, rgba(0, 0, 0, 0) 99%);
+        mask-image: linear-gradient(to right, rgba(0, 0, 0, 1) 40%, rgba(0, 0, 0, 0.7) 68%, rgba(0, 0, 0, 0.2) 86%, rgba(0, 0, 0, 0) 99%);
       }
+    }
+
+    /* Mobile (< 768px): keep 85% of image completely solid, only feather bottom edge gently */
+    @media (max-width: 767px) {
+      .fade-mask-right {
+        -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 82%, rgba(0, 0, 0, 0) 100%);
+        mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 82%, rgba(0, 0, 0, 0) 100%);
+      }
+      .fade-mask-left {
+        -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 82%, rgba(0, 0, 0, 0) 100%);
+        mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 82%, rgba(0, 0, 0, 0) 100%);
+      }
+    }
+
+    /* ── High-Performance 60/120fps GPU Styles & 3D Spatial Scroll ── */
+    .corner-framing-container {
+      perspective: 1000px;
+      transform-style: preserve-3d;
+      will-change: transform, opacity;
+      transform: translateZ(0);
+    }
+
+    .spatial-container {
+      perspective: 1200px;
+      transform-style: preserve-3d;
+      will-change: transform;
+    }
+
+    .spatial-word {
+      display: inline-block;
+      transform-style: preserve-3d;
+      will-change: transform, opacity, color;
+      backface-visibility: hidden;
+      margin-right: 0.28em;
+    }
+
+    .page3-layer {
+      z-index: 10;
+      will-change: transform, opacity, filter, border-radius, box-shadow;
+      transform: translateZ(0);
+      transform-origin: center center;
+      backface-visibility: hidden;
+    }
+
+    .page4-layer {
+      z-index: 45 !important;
+      background-color: #FAFAFA !important;
+      opacity: 1 !important;
+      will-change: transform, border-radius, box-shadow;
+      backface-visibility: hidden;
     }
 
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
       .parallax-layer { transform: none !important; }
+      .corner-framing-container { display: none !important; }
+      .spatial-word { transform: none !important; opacity: 1 !important; color: rgba(249,250,251,1) !important; }
+      .page3-layer { opacity: 1 !important; transform: none !important; filter: none !important; }
+      .page4-layer { transform: none !important; opacity: 1 !important; }
     }
   </style>
 </head>
 <body class="bg-surface text-on-surface font-body antialiased">
 
   <!-- Timmo-inspired Floating Centered Pill Navbar -->
-  <header class="fixed top-4 sm:top-6 inset-x-0 z-50 flex justify-center px-3 sm:px-gutter-md pointer-events-none">
-    <div class="pointer-events-auto inline-flex items-center justify-between gap-3 sm:gap-gutter-lg rounded-full bg-surface-card/95 backdrop-blur-md border border-outline shadow-md px-3.5 sm:px-4 py-1.5 sm:py-2 max-w-[calc(100vw-1.5rem)]">
-      <a href="#hero" class="inline-flex items-center pl-1 sm:pl-2 pr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full">
-        <img src="begin-logo.png" alt="Begin" class="h-4 sm:h-5 w-auto object-contain">
+  <header id="main-header" class="fixed top-3 xs:top-4 sm:top-6 inset-x-0 z-50 flex justify-center px-2.5 xs:px-3 sm:px-gutter-md pointer-events-none will-change-transform">
+    <div class="pointer-events-auto inline-flex items-center justify-between gap-2 xs:gap-3 sm:gap-gutter-lg rounded-full bg-surface-card/95 backdrop-blur-md border border-outline shadow-md px-3 xs:px-3.5 sm:px-4 py-1.5 sm:py-2 max-w-[calc(100vw-1.25rem)] sm:max-w-[calc(100vw-1.5rem)]">
+      <a href="#hero" class="inline-flex items-center pl-1 sm:pl-2 pr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full shrink-0">
+        <img src="begin-logo.png" alt="Begin" class="h-3.5 xs:h-4 sm:h-5 w-auto object-contain">
       </a>
 
       <nav aria-label="Primary" class="hidden md:flex items-center gap-gutter-xs">
@@ -117,144 +183,179 @@
         <a href="#ecosystem" class="rounded-full px-3.5 py-1.5 font-label text-label-lg text-on-surface-variant hover:text-on-surface transition-colors">Manifesto</a>
       </nav>
 
-      <a href="https://app.youform.com/forms/iln9dnmz" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center rounded-full bg-accent-lime text-on-accent-lime px-3.5 sm:px-4 py-1.5 font-label text-xs sm:text-label-lg font-medium hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0">
+      <a href="https://app.youform.com/forms/iln9dnmz" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center rounded-full bg-accent-lime text-on-accent-lime px-3 xs:px-3.5 sm:px-4 py-1 xs:py-1.5 font-label text-[11px] xs:text-xs sm:text-label-lg font-medium hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0">
         <span data-design-text-token="label-lg">Join Begin</span>
       </a>
     </div>
   </header>
 
   <main>
-    <!-- SECTION 1: Hero Section with pure, unobstructed background image -->
-    <section id="hero" data-parallax-section class="relative min-h-[100svh] lg:min-h-[1024px] overflow-hidden flex flex-col justify-start md:justify-center px-5 sm:px-8 md:px-16 pt-28 xs:pt-32 sm:pt-36 md:pt-0 pb-16 sm:py-24 bg-obsidian-surface" data-stitch-vh="min-h-[1024px]===min-h-screen">
-      <div class="absolute inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden="true">
+    <!-- UNIFIED 3-PAGE PINNED CINEMATIC SCROLL STAGE -->
+    <!-- Page 1: Hero -> Page 2: Reality (Manifesto) -> Page 3: Ecosystem (Appears from behind text) -->
+    <section id="hero-wrapper" class="relative w-full bg-obsidian-surface overflow-hidden">
+      <!-- Pinned Scroll Stage (100dvh / 100svh / 100vh - fully responsive) -->
+      <div id="scroll-stage" class="relative w-full viewport-screen overflow-hidden bg-obsidian-surface">
 
-        <img src="01-main_image_clean.png" alt="A lone builder sitting with a glowing laptop on a sunlit hill above the clouds" class="parallax-layer absolute -top-8 sm:-top-16 inset-x-0 w-full h-[calc(100%+64px)] sm:h-[calc(100%+128px)] object-cover object-[center_65%] sm:object-[center_82%]" data-parallax-speed="0.1">
-        <!-- Deep bottom depth blend into Section 2 -->
-        <div class="absolute inset-x-0 bottom-0 h-32 sm:h-52 bg-gradient-to-t from-obsidian-surface via-obsidian-surface/65 to-transparent pointer-events-none"></div>
-      </div>
-
-      <!-- Content positioned in clear sky at top on mobile, left-aligned on desktop; keeping the lone builder completely clear -->
-      <div class="relative z-10 w-full md:max-w-[48%] flex flex-col items-center md:items-start text-center md:text-left gap-3.5 xs:gap-4 sm:gap-6 max-w-sm xs:max-w-md sm:max-w-lg md:max-w-none mx-auto md:mx-0">
-        <h1 data-design-text-token="display-lg" class="font-serif text-[30px] xs:text-[36px] sm:text-[54px] md:text-[68px] lg:text-[76px] leading-[1.08] text-inverse-on-surface tracking-tight text-balance">Find your people,<br>build your thing</h1>
-
-        <p data-design-text-token="body-lg" class="font-body text-sm xs:text-base sm:text-lg md:text-[22px] md:leading-[32px] text-inverse-on-surface/90 max-w-xs xs:max-w-sm sm:max-w-md text-pretty">You don&#39;t have all it figured out, find your people, and start building something meaningful together.</p>
-
-        <div class="pt-1 xs:pt-2">
-          <a href="#mission" class="inline-flex items-center justify-center rounded-full bg-accent-lime text-on-accent-lime px-6 xs:px-7 sm:px-8 py-2.5 xs:py-3 sm:py-3.5 font-label text-sm xs:text-base md:text-lg font-medium shadow-md hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inverse-on-surface">
-            <span data-design-text-token="label-lg">Start Building</span>
-          </a>
+        <!-- LAYER 1 (z-0): Page 1 Hero Background Image -->
+        <div id="hero-bg-layer" class="absolute inset-0 z-0 overflow-hidden pointer-events-none will-change-transform">
+          <img src="01-main_image_clean.png"
+               alt="A lone builder sitting with a glowing laptop on a sunlit hill above the clouds"
+               id="hero-bg-img"
+               class="w-full h-full object-cover object-[center_65%] sm:object-[center_82%] will-change-transform">
+          
+          <!-- Bottom blend into obsidian -->
+          <div class="absolute inset-x-0 bottom-0 h-36 sm:h-56 bg-gradient-to-t from-obsidian-surface via-obsidian-surface/70 to-transparent pointer-events-none"></div>
         </div>
-      </div>
-    </section>
 
-    <!-- SECTION 2: Scroll-driven word-reveal — large editorial typography & grand section height -->
-    <section id="mission" class="relative bg-obsidian-surface min-h-[110vh] md:min-h-[150vh] py-24 sm:py-36 md:py-56 lg:py-64 px-5 sm:px-8 md:px-16 lg:px-20 flex flex-col justify-center items-center">
-      <!-- Top / bottom atmospheric blends -->
-      <div class="absolute inset-x-0 top-0 h-24 sm:h-32 bg-gradient-to-b from-obsidian-surface via-obsidian-surface/80 to-transparent pointer-events-none"></div>
-      <div class="absolute inset-x-0 bottom-0 h-24 sm:h-32 bg-gradient-to-t from-obsidian-surface via-obsidian-surface/80 to-transparent pointer-events-none"></div>
+        <!-- LAYER 2 (z-5): Darkening Overlay (Turns background pitch black on transition to Page 2) -->
+        <div id="hero-darken-overlay" class="absolute inset-0 z-5 bg-obsidian-surface opacity-0 pointer-events-none will-change-opacity"></div>
 
-      <div class="max-w-5xl mx-auto w-full text-center">
-        <p id="mission-text"
-           class="font-serif text-[clamp(1.45rem,4.5vw,3.25rem)] leading-[1.4] md:leading-[1.42] tracking-[-0.015em] select-none text-balance"
-           aria-label="Starting something of your own has somehow become a process of endless searching, scattered opportunities, unanswered questions and uncertain beginnings. You have an idea, maybe the ambition to build something meaningful, but finding the right people, the right guidance, the right resources and the right direction often feels like a journey of its own. You explore communities, reach out to strangers, look for collaborators and try to figure out what comes next — hoping that somewhere along the way, all the pieces finally come together.">
-        </p>
-      </div>
-    </section>
+        <!-- LAYER 3 (z-10): Page 3 (Ecosystem & Boards) — Positioned BEHIND the text! Appears out of background -->
+        <div id="ecosystem" class="page3-layer absolute inset-0 z-10 w-full h-full bg-obsidian-surface text-inverse-on-surface overflow-hidden flex flex-col md:flex-row pointer-events-none opacity-0 will-change-transform">
+          <!-- Edge Vignette: Dark corners & sides that smoothly clear away to reveal original colors -->
+          <div id="ecosystem-vignette" class="absolute inset-0 pointer-events-none z-20 will-change-opacity"
+               style="background: radial-gradient(ellipse at center, rgba(7,8,9,0) 25%, rgba(7,8,9,0.78) 65%, rgba(7,8,9,0.98) 100%);">
+          </div>
 
-    <!-- SECTION 3: Full-screen single-frame split — image left, content right -->
-    <section id="ecosystem" class="relative bg-obsidian-surface text-inverse-on-surface overflow-hidden min-h-screen flex flex-col lg:flex-row">
+          <!-- Left: Image (Side-by-side down to 768px; on mobile, generous height with clear builder framing) -->
+          <div class="relative w-full md:w-1/2 h-[34vh] xs:h-[36vh] sm:h-[40vh] md:h-full max-h-[460px] md:max-h-none overflow-hidden pointer-events-none flex-shrink-0">
+            <div class="w-full h-full fade-mask-right">
+              <img src="01-image2_clean.png" alt="A young builder sitting under a tree on a hillside overlooking a bright future city" class="w-full h-full object-cover object-[38%_30%] md:object-[40%_35%]">
+            </div>
+            <!-- Top atmospheric blend -->
+            <div class="absolute inset-x-0 top-0 h-10 sm:h-20 bg-gradient-to-b from-obsidian-surface/60 via-obsidian-surface/30 to-transparent"></div>
+            <!-- Subtle bottom blend only on mobile stacked view -->
+            <div class="md:hidden absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-obsidian-surface/80 to-transparent"></div>
 
-      <!-- Left: Image — full height, fully visible in one frame -->
-      <div class="relative w-full lg:w-1/2 h-[75vw] sm:h-[60vw] max-h-[520px] min-h-[280px] lg:max-h-none lg:min-h-0 lg:h-auto lg:min-h-screen overflow-hidden pointer-events-none flex-shrink-0">
-        <div class="w-full h-full fade-mask-right">
-          <img src="01-image2_clean.png" alt="A young builder sitting under a tree on a hillside overlooking a bright future city" class="w-full h-full object-cover object-[40%_35%]">
+            <!-- Bottom-left editorial signature (visible on tablet & desktop) -->
+            <div class="hidden md:flex absolute bottom-6 lg:bottom-8 left-6 lg:left-10 right-8 lg:right-16 z-10 flex-col gap-gutter-sm">
+              <span data-design-text-token="headline-lg" class="font-serif text-xl lg:text-headline-lg text-inverse-on-surface">Work fast. Live slow.</span>
+            </div>
+          </div>
+
+          <!-- Right: Editorial Content -->
+          <div id="boards" class="w-full md:w-1/2 flex flex-col justify-center px-4 xs:px-6 sm:px-8 md:px-10 lg:px-16 py-3 xs:py-4 sm:py-6 md:py-10 lg:py-16 gap-2.5 xs:gap-3 sm:gap-4 lg:gap-7 max-w-2xl mx-auto md:mx-0 overflow-y-auto md:overflow-visible pointer-events-auto">
+            <!-- Beat 1: Ecosystem -->
+            <div class="flex flex-col gap-1.5 xs:gap-2 sm:gap-3">
+              <h2 data-design-text-token="display-md" class="font-serif text-[clamp(20px,3.6vw,44px)] text-inverse-on-surface text-balance leading-tight">Turn early sparks<br>into real momentum.</h2>
+              <p data-design-text-token="body-md" class="font-body text-[11px] xs:text-xs sm:text-body-md text-inverse-muted text-pretty leading-relaxed">From zero to something real — find your co-founder, ship your MVP, and build alongside people who actually get it. No vanity metrics, no performative networking.</p>
+
+              <!-- Tag pills -->
+              <div class="flex flex-wrap gap-1.5 sm:gap-2 pt-0.5">
+                <span class="rounded-full border border-inverse-on-surface/15 bg-white/[0.04] px-2 xs:px-2.5 py-0.5 sm:px-3.5 sm:py-1 font-mono text-[10px] xs:text-[11px] sm:text-label-sm text-inverse-on-surface hover:border-accent-lime/40 transition-colors">Co-founders </span>
+                <span class="rounded-full border border-inverse-on-surface/15 bg-white/[0.04] px-2 xs:px-2.5 py-0.5 sm:px-3.5 sm:py-1 font-mono text-[10px] xs:text-[11px] sm:text-label-sm text-inverse-on-surface hover:border-accent-lime/40 transition-colors">MVPs &amp; Shipping </span>
+                <span class="rounded-full border border-inverse-on-surface/15 bg-white/[0.04] px-2 xs:px-2.5 py-0.5 sm:px-3.5 sm:py-1 font-mono text-[10px] xs:text-[11px] sm:text-label-sm text-inverse-on-surface hover:border-accent-lime/40 transition-colors">Early Teams </span>
+              </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="border-t border-inverse-on-surface/10"></div>
+
+            <!-- Beat 2: Boards -->
+            <div class="flex flex-col gap-1.5 xs:gap-2 sm:gap-3">
+              <h2 data-design-text-token="display-md" class="font-serif text-[clamp(20px,3.6vw,44px)] text-inverse-on-surface text-balance leading-tight">Boards for every<br>stage of the build.</h2>
+              <p data-design-text-token="body-md" class="font-body text-[11px] xs:text-xs sm:text-body-md text-inverse-muted text-pretty leading-relaxed">The right room for every phase — from idea to fundraise to first hire. Each board keeps noise low and signal high.</p>
+
+              <div class="flex flex-wrap gap-1.5 sm:gap-2 pt-0.5">
+                <span class="rounded-full border border-inverse-on-surface/15 bg-white/[0.04] px-2 xs:px-2.5 py-0.5 sm:px-3.5 sm:py-1 font-mono text-[10px] xs:text-[11px] sm:text-label-sm text-inverse-on-surface hover:border-accent-lime/40 transition-colors">Idea </span>
+                <span class="rounded-full border border-inverse-on-surface/15 bg-white/[0.04] px-2 xs:px-2.5 py-0.5 sm:px-3.5 sm:py-1 font-mono text-[10px] xs:text-[11px] sm:text-label-sm text-inverse-on-surface hover:border-accent-lime/40 transition-colors">Fundraise</span>
+                <span class="rounded-full border border-inverse-on-surface/15 bg-white/[0.04] px-2 xs:px-2.5 py-0.5 sm:px-3.5 sm:py-1 font-mono text-[10px] xs:text-[11px] sm:text-label-sm text-inverse-on-surface hover:border-accent-lime/40 transition-colors">Hire</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <!-- Top blend from mission -->
-        <div class="absolute inset-x-0 top-0 h-24 sm:h-32 bg-gradient-to-b from-obsidian-surface via-obsidian-surface/50 to-transparent"></div>
-        <!-- Bottom blend -->
-        <div class="absolute inset-x-0 bottom-0 h-24 sm:h-32 bg-gradient-to-t from-obsidian-surface via-obsidian-surface/50 to-transparent"></div>
 
-        <!-- Bottom-left editorial signature -->
-        <div class="hidden lg:flex absolute bottom-8 left-10 right-16 z-10 flex-col gap-gutter-sm">
-          <span data-design-text-token="headline-lg" class="font-serif text-headline-lg text-inverse-on-surface">Work fast. Live slow.</span>
+        <!-- LAYER 4 (z-20): Page 2 Manifesto / Reality Text Layer (IN FRONT of Page 3!) -->
+        <div id="mission" class="mission-reveal-layer spatial-container absolute inset-0 z-20 flex flex-col justify-center items-center px-4 xs:px-6 sm:px-10 md:px-16 lg:px-20 pointer-events-none opacity-0 will-change-transform">
+          <div class="max-w-5xl mx-auto w-full text-center pointer-events-auto spatial-container">
+            <span id="mission-badge" class="inline-flex items-center gap-2 rounded-full border border-inverse-on-surface/15 bg-white/[0.04] px-3 xs:px-3.5 py-0.5 xs:py-1 font-mono text-[10px] xs:text-xs text-accent-lime uppercase tracking-widest mb-3 xs:mb-4 sm:mb-6 will-change-transform">
+              The Reality
+            </span>
+            <p id="mission-text"
+               class="font-serif text-[clamp(1.08rem,3.4vw,2.95rem)] leading-[1.36] md:leading-[1.42] tracking-[-0.015em] select-none text-balance text-inverse-on-surface spatial-container"
+               aria-label="Starting something of your own has somehow become a process of endless searching, scattered opportunities, unanswered questions and uncertain beginnings. You have an idea, maybe the ambition to build something meaningful, but finding the right people, the right guidance, the right resources and the right direction often feels like a journey of its own. You explore communities, reach out to strangers, look for collaborators and try to figure out what comes next — hoping that somewhere along the way, all the pieces finally come together.">
+            </p>
+          </div>
         </div>
-      </div>
 
-      <!-- Right: Content — Rich, expansive editorial layout that fills the space -->
-      <div id="boards" class="w-full lg:w-1/2 flex flex-col justify-center px-5 sm:px-10 md:px-12 lg:px-16 py-12 sm:py-16 lg:py-24 gap-10 sm:gap-12 max-w-2xl mx-auto lg:mx-0">
+        <!-- LAYER 5 (z-30): Page 1 Corner Framing (Vines & Clouds - Page 1 Only!) -->
+        <div id="corner-framing-container"
+             class="corner-framing-container absolute inset-0 z-30 pointer-events-none overflow-hidden will-change-transform">
+          <img src="corner-frame-combined.svg" alt="" aria-hidden="true" class="w-full h-full object-cover object-center pointer-events-none select-none will-change-transform">
+        </div>
 
-        <!-- Beat 1: Ecosystem -->
-        <div class="flex flex-col gap-4 sm:gap-5">
+        <!-- LAYER 6 (z-40): Page 1 Hero Intro Layer: Title, Subtitle, and CTA Button -->
+        <div id="hero" class="hero-intro-layer absolute inset-0 z-40 flex flex-col justify-start md:justify-center px-4 xs:px-6 sm:px-8 md:px-16 pt-24 xs:pt-28 sm:pt-32 md:pt-0 pb-14 sm:py-24 pointer-events-none will-change-transform">
+          <div class="pointer-events-auto w-full md:max-w-[50%] lg:max-w-[48%] flex flex-col items-center md:items-start text-center md:text-left gap-3 xs:gap-4 sm:gap-6 max-w-sm xs:max-w-md sm:max-w-lg md:max-w-none mx-auto md:mx-0">
+            <h1 data-design-text-token="display-lg" class="font-serif text-[clamp(28px,7.5vw,76px)] leading-[1.08] text-inverse-on-surface tracking-tight text-balance">Find your people,<br>build your thing</h1>
 
-          <h2 data-design-text-token="display-md" class="font-serif text-[28px] xs:text-[32px] sm:text-display-md-mobile md:text-display-md text-inverse-on-surface text-balance leading-tight">Turn early sparks<br>into real momentum.</h2>
-          <p data-design-text-token="body-md" class="font-body text-body-md text-inverse-muted text-pretty leading-relaxed">From zero to something real — find your co-founder, ship your MVP, and build alongside people who actually get it. No vanity metrics, no performative networking.</p>
+            <p data-design-text-token="body-lg" class="font-body text-[clamp(13px,3.4vw,20px)] leading-[1.48] text-inverse-on-surface/90 max-w-xs xs:max-w-sm sm:max-w-md text-pretty">You don&#39;t have all it figured out, find your people, and start building something meaningful together.</p>
 
-          <!-- Tag pills with active member stats -->
-          <div class="flex flex-wrap gap-2 pt-1">
-            <span class="rounded-full border border-inverse-on-surface/15 bg-white/[0.04] px-3 py-1 sm:px-3.5 sm:py-1.5 font-mono text-xs sm:text-label-sm text-inverse-on-surface hover:border-accent-lime/40 transition-colors">Co-founders </span>
-            <span class="rounded-full border border-inverse-on-surface/15 bg-white/[0.04] px-3 py-1 sm:px-3.5 sm:py-1.5 font-mono text-xs sm:text-label-sm text-inverse-on-surface hover:border-accent-lime/40 transition-colors">MVPs &amp; Shipping </span>
-            <span class="rounded-full border border-inverse-on-surface/15 bg-white/[0.04] px-3 py-1 sm:px-3.5 sm:py-1.5 font-mono text-xs sm:text-label-sm text-inverse-on-surface hover:border-accent-lime/40 transition-colors">Early Teams </span>
+            <div class="pt-1 xs:pt-2 flex items-center gap-3 w-full sm:w-auto justify-center md:justify-start">
+              <a href="#mission" class="inline-flex w-full sm:w-auto items-center justify-center rounded-full bg-accent-lime text-on-accent-lime px-6 xs:px-7 sm:px-8 py-2.5 xs:py-3 sm:py-3.5 font-label text-sm xs:text-base md:text-lg font-medium shadow-md hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inverse-on-surface">
+                <span data-design-text-token="label-lg">Start Building</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Subtle scroll indicator at bottom -->
+          <div id="scroll-hint" class="hidden xs:flex absolute bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 flex-col items-center gap-1 sm:gap-1.5 text-inverse-muted/70 pointer-events-none transition-opacity duration-300">
+            <span class="text-[10px] sm:text-[11px] font-mono tracking-widest uppercase">Scroll to explore</span>
+            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+            </svg>
+          </div>
+        </div>
+
+        <!-- LAYER 7 (z-45): Page 4 (Waitlist & Bridge Arch) — Overlays on 3rd card in full size -->
+        <div id="waitlist" class="page4-layer absolute inset-0 z-40 w-full h-full bg-[#FAFAFA] text-on-surface overflow-hidden flex flex-col items-center justify-start pt-14 xs:pt-16 sm:pt-24 md:pt-32 pb-10 sm:pb-16 px-4 xs:px-6 sm:px-8 pointer-events-none will-change-transform" style="z-index: 45; background-color: #FAFAFA;">
+          
+          <!-- Background image with inner counter-parallax layer -->
+          <div id="page4-bg-container" class="absolute inset-0 z-0 overflow-hidden pointer-events-none will-change-transform" aria-hidden="true">
+            <div id="page4-bg-layer" class="absolute -top-12 inset-x-0 w-full h-[calc(100%+96px)] will-change-transform">
+              <img src="01-image4_clean.png" alt="Two builders standing together on a lush grassy arch overlooking a sea of clouds" class="w-full h-full object-cover object-[center_82%] sm:object-[center_80%]">
+              
+              <!-- Curved 'begin' typography bending along the bridge arch and blending into the sunlit mist -->
+              <svg viewBox="0 0 1000 260" class="absolute top-[62%] xs:top-[59%] sm:top-[54%] md:top-[48%] left-1/2 -translate-x-1/2 w-[92%] sm:w-[82%] max-w-[780px] h-auto overflow-hidden mix-blend-multiply opacity-30 select-none pointer-events-none" aria-hidden="true">
+                <defs>
+                  <path id="bridge-curve" d="M 120,205 Q 500,110 880,205" fill="none"></path>
+                  <linearGradient id="bridge-text-fade" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#253324" stop-opacity="0.72"></stop>
+                    <stop offset="65%" stop-color="#253324" stop-opacity="0.38"></stop>
+                    <stop offset="100%" stop-color="#253324" stop-opacity="0.04"></stop>
+                  </linearGradient>
+                </defs>
+                <text fill="url(#bridge-text-fade)" class="font-serif italic" font-size="118" letter-spacing="14">
+                  <textPath href="#bridge-curve" startOffset="50%" text-anchor="middle">begin</textPath>
+                </text>
+              </svg>
+            </div>
+            
+            <!-- Atmospheric blends: Top mist blend + Bottom obsidian blend to footer -->
+            <div class="absolute inset-x-0 top-0 h-28 sm:h-44 bg-gradient-to-b from-surface via-surface/60 to-transparent"></div>
+            <div class="absolute inset-x-0 bottom-0 h-24 sm:h-36 bg-gradient-to-t from-obsidian-surface via-obsidian-surface/60 to-transparent"></div>
+          </div>
+
+          <!-- Tactile Deck Sheet Pill Handle -->
+          <div id="page4-sheet-handle" class="relative z-10 w-10 xs:w-12 h-1 rounded-full bg-on-surface/20 mb-2.5 xs:mb-3 sm:mb-4 pointer-events-none transition-opacity duration-300"></div>
+
+          <!-- Content: Early Access, Headline, Paragraph, Join Waitlist Button -->
+          <div id="page4-content" class="relative z-10 max-w-2xl mx-auto w-full flex flex-col items-center text-center gap-3 xs:gap-3.5 sm:gap-gutter-md will-change-transform">
+            <span data-design-text-token="label-sm" class="font-mono text-[10px] xs:text-xs sm:text-label-sm uppercase tracking-widest text-on-surface bg-surface-card/80 backdrop-blur-sm px-3 xs:px-3.5 py-0.5 xs:py-1 rounded-full border border-outline/70 shadow-xs">Early Access</span>
+
+            <h2 data-design-text-token="display-lg" class="font-serif text-[clamp(24px,5.2vw,56px)] text-on-surface text-balance leading-tight">Cross the bridge with the people who get it.</h2>
+
+            <p data-design-text-token="body-lg" class="font-body text-[clamp(13px,3vw,18px)] leading-[1.48] text-on-surface/90 max-w-lg text-pretty">We&#39;re opening Begin in small waves of builders, founders, and curious minds. Join the waitlist and claim your spot.</p>
+
+            <div class="pt-1 xs:pt-1.5 sm:pt-2 w-full sm:w-auto">
+              <a href="https://app.youform.com/forms/iln9dnmz" target="_blank" rel="noopener noreferrer" class="inline-flex w-full sm:w-auto items-center justify-center rounded-full bg-accent-lime text-on-accent-lime px-6 xs:px-7 sm:px-8 py-2.5 xs:py-3 sm:py-3.5 font-label text-sm xs:text-base md:text-lg font-medium shadow-md hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inverse-on-surface">
+                <span data-design-text-token="label-lg">Join the waitlist</span>
+              </a>
+            </div>
           </div>
 
         </div>
 
-        <!-- Divider -->
-        <div class="border-t border-inverse-on-surface/10"></div>
-
-        <!-- Beat 2: Boards -->
-        <div class="flex flex-col gap-5 sm:gap-6">
-
-          <h2 data-design-text-token="display-md" class="font-serif text-[28px] xs:text-[32px] sm:text-display-md-mobile md:text-display-md text-inverse-on-surface text-balance leading-tight">Boards for every<br>stage of the build.</h2>
-          <p data-design-text-token="body-md" class="font-body text-body-md text-inverse-muted text-pretty leading-relaxed">The right room for every phase — from idea to fundraise to first hire. Each board keeps noise low and signal high.</p>
-
-          <div class="flex flex-wrap gap-2 pt-1">
-            <span class="rounded-full border border-inverse-on-surface/15 bg-white/[0.04] px-3 py-1 sm:px-3.5 sm:py-1.5 font-mono text-xs sm:text-label-sm text-inverse-on-surface hover:border-accent-lime/40 transition-colors">Idea </span>
-            <span class="rounded-full border border-inverse-on-surface/15 bg-white/[0.04] px-3 py-1 sm:px-3.5 sm:py-1.5 font-mono text-xs sm:text-label-sm text-inverse-on-surface hover:border-accent-lime/40 transition-colors">Fundraise</span>
-            <span class="rounded-full border border-inverse-on-surface/15 bg-white/[0.04] px-3 py-1 sm:px-3.5 sm:py-1.5 font-mono text-xs sm:text-label-sm text-inverse-on-surface hover:border-accent-lime/40 transition-colors">Hire</span>
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- SECTION 4: Final Waitlist section with full-bleed 01-image4_clean-9d59c2.png -->
-    <section id="waitlist" data-parallax-section class="relative min-h-[660px] sm:min-h-[800px] lg:min-h-[1024px] overflow-hidden flex flex-col items-center justify-start pt-24 sm:pt-32 md:pt-40 lg:pt-44 pb-16 sm:pb-20 px-5 sm:px-8 bg-surface" data-stitch-vh="min-h-[1024px]===min-h-screen">
-      <div class="absolute inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden="true">
-        <div class="parallax-layer absolute -top-16 inset-x-0 w-full h-[calc(100%+128px)]" data-parallax-speed="0.08">
-          <img src="01-image4_clean.png" alt="Two builders standing together on a lush grassy arch overlooking a sea of clouds" class="w-full h-full object-cover object-[center_82%]">
-          <!-- Curved 'begin' typography bending along the bridge arch and blending into the sunlit mist -->
-          <svg viewBox="0 0 1000 260" class="absolute top-[60%] sm:top-[57%] md:top-[48%] left-1/2 -translate-x-1/2 w-[92%] sm:w-[82%] max-w-[780px] h-auto overflow-hidden mix-blend-multiply opacity-30 select-none pointer-events-none" aria-hidden="true">
-            <defs>
-              <path id="bridge-curve" d="M 120,205 Q 500,110 880,205" fill="none"></path>
-              <linearGradient id="bridge-text-fade" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#253324" stop-opacity="0.72"></stop>
-                <stop offset="65%" stop-color="#253324" stop-opacity="0.38"></stop>
-                <stop offset="100%" stop-color="#253324" stop-opacity="0.04"></stop>
-              </linearGradient>
-            </defs>
-            <text fill="url(#bridge-text-fade)" class="font-serif italic" font-size="118" letter-spacing="14">
-              <textPath href="#bridge-curve" startOffset="50%" text-anchor="middle">begin</textPath>
-            </text>
-          </svg>
-        </div>
-        <!-- Seamless top cloud-mist blend from Section 3 + bottom depth blend into Footer -->
-        <div class="absolute inset-x-0 top-0 h-40 sm:h-52 bg-gradient-to-b from-surface via-surface/65 to-transparent"></div>
-        <div class="absolute inset-x-0 bottom-0 h-36 sm:h-44 bg-gradient-to-t from-obsidian-surface via-obsidian-surface/65 to-transparent"></div>
-      </div>
-
-      <!-- Content positioned slightly higher, perfectly centered in the open sky above the bridge arch -->
-      <div class="relative z-10 max-w-2xl mx-auto w-full flex flex-col items-center text-center gap-4 sm:gap-gutter-md">
-        <span data-design-text-token="label-sm" class="font-mono text-label-sm uppercase tracking-widest text-on-surface">Early Access</span>
-
-        <h2 data-design-text-token="display-lg" class="font-serif text-[28px] xs:text-[34px] sm:text-display-lg-mobile md:text-display-lg text-on-surface text-balance leading-tight">Cross the bridge with the people who get it.</h2>
-
-        <p data-design-text-token="body-lg" class="font-body text-base xs:text-lg sm:text-body-lg text-on-surface max-w-lg text-pretty">We&#39;re opening Begin in small waves of builders, founders, and curious minds. Join the waitlist and claim your spot.</p>
-
-        <div class="pt-2 w-full sm:w-auto">
-          <a href="https://app.youform.com/forms/iln9dnmz" target="_blank" rel="noopener noreferrer" class="inline-flex w-full sm:w-auto items-center justify-center rounded-full bg-accent-lime text-on-accent-lime px-7 sm:px-8 py-3 sm:py-3.5 font-label text-base md:text-lg font-medium shadow-md hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inverse-on-surface">
-            <span data-design-text-token="label-lg">Join the waitlist</span>
-          </a>
-        </div>
       </div>
     </section>
   </main>
@@ -301,7 +402,8 @@
 
 
   <script>
-    (function () {
+    /* ── GSAP ScrollTrigger: High-Performance Zoom & 3D Spatial Scroll Fly-Out ── */
+    window.addEventListener('DOMContentLoaded', function () {
       var waitlistForm = document.getElementById('waitlist-form');
       var waitlistInput = document.getElementById('waitlist-email');
       if (waitlistForm) {
@@ -315,91 +417,393 @@
       }
 
       var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (prefersReducedMotion) return;
 
-      var sections = Array.prototype.slice.call(document.querySelectorAll('[data-parallax-section]'));
-      if (!sections.length) return;
-
-      var ticking = false;
-      function updateParallax() {
-        var vh = window.innerHeight || 1;
-        for (var i = 0; i < sections.length; i++) {
-          var layer = sections[i].querySelector('.parallax-layer');
-          if (!layer) continue;
-          var rect = sections[i].getBoundingClientRect();
-          var speed = parseFloat(layer.getAttribute('data-parallax-speed')) || 0.08;
-          var rawDelta = (vh / 2 - (rect.top + rect.height / 2)) * speed;
-          var delta = Math.max(-48, Math.min(48, rawDelta));
-          layer.style.transform = 'translate3d(0, ' + delta.toFixed(2) + 'px, 0)';
-        }
-        ticking = false;
+      /* Populate editorial words in mission text with 3D spatial wrappers */
+      var missionText = document.getElementById('mission-text');
+      var wordEls = [];
+      if (missionText) {
+        var message = 'Starting something of your own has somehow become a process of endless searching, scattered opportunities, unanswered questions and uncertain beginnings. You have an idea, maybe the ambition to build something meaningful, but finding the right people, the right guidance, the right resources and the right direction often feels like a journey of its own. You explore communities, reach out to strangers, look for collaborators and try to figure out what comes next \u2014 hoping that somewhere along the way, all the pieces finally come together.';
+        var words = message.split(' ');
+        missionText.innerHTML = words.map(function (w, i) {
+          return '<span class="spatial-word" data-word-idx="' + i + '" style="color:rgba(249,250,251,0.14)">' + w + '</span>';
+        }).join(' ');
+        wordEls = Array.prototype.slice.call(missionText.querySelectorAll('.spatial-word'));
       }
 
-      function onScroll() {
-        if (!ticking) {
-          window.requestAnimationFrame(updateParallax);
-          ticking = true;
+      if (prefersReducedMotion || typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') {
+        if (missionText) {
+          wordEls.forEach(function (w) { w.style.color = 'rgba(249,250,251,1)'; });
         }
+        var missionLayer = document.querySelector('.mission-reveal-layer');
+        if (missionLayer) {
+          missionLayer.style.opacity = '1';
+          missionLayer.style.pointerEvents = 'auto';
+        }
+        return;
       }
 
-      window.addEventListener('scroll', onScroll, { passive: true });
-      window.addEventListener('resize', onScroll, { passive: true });
-      updateParallax();
-    })();
+      gsap.registerPlugin(ScrollTrigger);
 
-      /* ── Scroll-driven word reveal (Section 3 / Mission) — large typography reveal ── */
-    (function () {
-      var textEl = document.getElementById('mission-text');
-      if (!textEl) return;
+      var heroWrapper = document.getElementById('hero-wrapper');
+      var scrollStage = document.getElementById('scroll-stage');
+      var heroBgImg = document.getElementById('hero-bg-img');
+      var heroDarken = document.getElementById('hero-darken-overlay');
+      var ecosystemLayer = document.getElementById('ecosystem');
+      var ecosystemVignette = document.getElementById('ecosystem-vignette');
+      var heroIntro = document.getElementById('hero');
+      var missionLayer = document.querySelector('.mission-reveal-layer');
+      var missionBadge = document.getElementById('mission-badge');
+      var scrollHint = document.getElementById('scroll-hint');
+      var mainHeader = document.getElementById('main-header');
+      var framingContainer = document.getElementById('corner-framing-container');
+      var waitlistLayer = document.getElementById('waitlist');
+      var page4BgLayer = document.getElementById('page4-bg-layer');
+      var page4Content = document.getElementById('page4-content');
+      var page4SheetHandle = document.getElementById('page4-sheet-handle');
 
-      var message = 'Starting something of your own has somehow become a process of endless searching, scattered opportunities, unanswered questions and uncertain beginnings. You have an idea, maybe the ambition to build something meaningful, but finding the right people, the right guidance, the right resources and the right direction often feels like a journey of its own. You explore communities, reach out to strangers, look for collaborators and try to figure out what comes next \u2014 hoping that somewhere along the way, all the pieces finally come together.';
+      if (!heroWrapper || !scrollStage || !heroBgImg) return;
 
-      /* Split into individual word spans */
-      var words = message.split(' ');
-      textEl.innerHTML = words.map(function (w) {
-        return '<span class="reveal-word" style="color:rgba(249,250,251,0.12);transition:color 0.22s cubic-bezier(0.16, 1, 0.3, 1)">' + w + '</span>';
-      }).join(' ');
-
-      var wordEls = textEl.querySelectorAll('.reveal-word');
-      var total   = wordEls.length;
-      var ticking = false;
-
-      function updateReveal() {
-        var rect = textEl.getBoundingClientRect();
-        var vh   = window.innerHeight;
-
-        /*
-         * Progressive scroll scrub:
-         * — reveal begins when top of text reaches 80% from top of viewport
-         * — reveal reaches 100% when bottom of text is around 30% from top of viewport
-         */
-        var scrolled = vh * 0.80 - rect.top;
-        var range    = rect.height + vh * 0.50;
-        var progress = Math.max(0, Math.min(1, scrolled / range));
-
-        /* Smooth rolling gradient window (~8 words) */
-        var win = 8 / total;
-
-        for (var i = 0; i < total; i++) {
-          var wp         = i / (total - 1);
-          var brightness = Math.max(0, Math.min(1, (progress - wp + win) / win));
-          var alpha      = 0.12 + brightness * 0.88;
-          wordEls[i].style.color = 'rgba(249,250,251,' + alpha.toFixed(3) + ')';
-        }
-        ticking = false;
+      /* Ensure Page 4 starts cleanly translated off-screen without matrix conflict */
+      if (waitlistLayer) {
+        gsap.set(waitlistLayer, { yPercent: 100, y: 0, x: 0 });
       }
 
-      function onScroll() {
-        if (!ticking) {
-          window.requestAnimationFrame(updateReveal);
-          ticking = true;
+      /* Main Scroll-Triggered Pin Timeline with Natural Pacing */
+      var zoomTimeline = gsap.timeline({
+        scrollTrigger: {
+          id: 'hero-scroll-zoom',
+          trigger: heroWrapper,
+          start: 'top top',
+          end: '+=520%',
+          pin: scrollStage,
+          scrub: 0.7,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+          onUpdate: function (self) {
+            if (scrollHint) {
+              scrollHint.style.opacity = self.progress > 0.03 ? '0' : '1';
+            }
+            if (waitlistLayer) {
+              waitlistLayer.style.pointerEvents = self.progress >= 0.82 ? 'auto' : 'none';
+            }
+            if (ecosystemLayer) {
+              if (self.progress >= 0.88) {
+                ecosystemLayer.style.visibility = 'hidden';
+              } else {
+                ecosystemLayer.style.visibility = 'visible';
+              }
+            }
+          }
         }
+      });
+
+      /* 1. TOP BAR NAVBAR: Fades out on Page 1 -> Page 2 transition so it never covers the text */
+      if (mainHeader) {
+        zoomTimeline.to(mainHeader, {
+          opacity: 0,
+          y: -25,
+          pointerEvents: 'none',
+          ease: 'power2.in',
+          duration: 0.12
+        }, 0.02);
+
+        /* Smoothly returns as Page 3 begins appearing */
+        zoomTimeline.to(mainHeader, {
+          opacity: 1,
+          y: 0,
+          pointerEvents: 'auto',
+          ease: 'power2.out',
+          duration: 0.08
+        }, 0.74);
       }
 
-      window.addEventListener('scroll', onScroll, { passive: true });
-      window.addEventListener('resize', onScroll, { passive: true });
-      updateReveal();
-    })();
+      /* 2. Hero Intro Layer (Page 1) fades out and lifts */
+      zoomTimeline.to(heroIntro, {
+        opacity: 0,
+        y: -45,
+        scale: 1.03,
+        ease: 'power2.in',
+        duration: 0.15,
+        pointerEvents: 'none'
+      }, 0);
+
+      /* 3. Corner Framing (Vines & Clouds): Zooms out past camera & dissolves (Page 1 only!) */
+      if (framingContainer) {
+        zoomTimeline.to(framingContainer, {
+          scale: 2.8,
+          opacity: 0,
+          transformOrigin: 'center center',
+          ease: 'power2.inOut',
+          duration: 0.24,
+          force3D: true
+        }, 0);
+      }
+
+      /* 4. Hero Background Image zooms in smoothly */
+      zoomTimeline.to(heroBgImg, {
+        scale: 1.25,
+        transformOrigin: 'center 75%',
+        ease: 'power1.inOut',
+        duration: 0.32,
+        force3D: true
+      }, 0);
+
+      /* 5. BACKGROUND DARKENS: Becomes 100% PITCH BLACK obsidian on transition to Page 2 */
+      zoomTimeline.to(heroDarken, {
+        opacity: 1.0,
+        ease: 'power1.inOut',
+        duration: 0.22
+      }, 0);
+
+      /* 6. Page 2 (Manifesto text) fades in and stabilizes over the dark background */
+      zoomTimeline.fromTo(missionLayer,
+        { opacity: 0, y: 30, scale: 0.96 },
+        { opacity: 1, y: 0, scale: 1.0, ease: 'power2.out', duration: 0.15, pointerEvents: 'auto', force3D: true },
+        0.15
+      );
+
+      /* 7. Progressive word illumination to pure crisp white (Progress 0.18 to 0.38) */
+      var total = wordEls.length;
+      wordEls.forEach(function (el, i) {
+        var illumTime = 0.18 + (i / total) * 0.17;
+        zoomTimeline.to(el, {
+          color: 'rgba(249, 250, 251, 1)',
+          ease: 'power1.inOut',
+          duration: 0.035
+        }, illumTime);
+      });
+
+      /* 8. PEACEFUL READING PAUSE (Progress 0.38 to 0.48): Text is completely white, stable, and clear */
+
+      /* 9. 3D SPATIAL ZOOM FLY-OUT FOR WORDS (Progress 0.48 to 0.66):
+            Words launch forward in waves towards the camera with responsive screen-width scaling */
+      wordEls.forEach(function (el, i) {
+        var angle = (i / total) * Math.PI * 2 * 3.5 + (i * 0.42);
+        var baseDist = 140 + (i % 6) * 80 + ((i * 17) % 190);
+        var startFly = 0.48 + (i / total) * 0.12 + ((i % 10) / 10) * 0.04;
+
+        zoomTimeline.to(el, {
+          x: function () {
+            var w = window.innerWidth;
+            var spread = w < 640 ? 0.35 : (w < 1024 ? 0.65 : 1.5);
+            return Math.cos(angle) * baseDist * spread;
+          },
+          y: function () {
+            var w = window.innerWidth;
+            var spread = w < 640 ? 0.45 : (w < 1024 ? 0.65 : 0.85);
+            return Math.sin(angle) * baseDist * spread;
+          },
+          z: function () {
+            var w = window.innerWidth;
+            var zDepth = 700 + (i % 8) * 120 + ((i * 23) % 400);
+            return w < 640 ? zDepth * 0.65 : zDepth;
+          },
+          scale: function () {
+            var w = window.innerWidth;
+            var baseScale = 2.2 + ((i % 5) * 0.35);
+            return w < 640 ? baseScale * 0.8 : baseScale;
+          },
+          opacity: 0,
+          ease: 'power2.in',
+          duration: 0.12,
+          force3D: true
+        }, startFly);
+      });
+
+      /* Badge flies forward into 3D space */
+      if (missionBadge) {
+        zoomTimeline.to(missionBadge, {
+          z: function () { return window.innerWidth < 640 ? 750 : 1100; },
+          scale: function () { return window.innerWidth < 640 ? 2.2 : 2.8; },
+          opacity: 0,
+          ease: 'power2.in',
+          duration: 0.12,
+          force3D: true
+        }, 0.56);
+      }
+
+      /* 10. RIGHT AS ALL TEXT IS ABOUT TO FULLY LAUNCH OFF (at progress 0.64):
+             - 3rd Page (Ecosystem) appears from behind the text and SLOWLY UNBLURS!
+             - Corners and sides are dark at first, then smoothly gain their original color */
+      if (ecosystemLayer) {
+        zoomTimeline.fromTo(ecosystemLayer,
+          { opacity: 0, scale: 0.90, filter: 'blur(12px)' },
+          {
+            opacity: 1,
+            scale: 1.0,
+            filter: 'blur(0px)',
+            ease: 'power2.out',
+            duration: 0.16,
+            pointerEvents: 'auto',
+            force3D: true
+          },
+          0.64
+        );
+      }
+
+      /* Corners and sides dark at first, then fade out vignette so sides & corners gain their original color */
+      if (ecosystemVignette) {
+        zoomTimeline.fromTo(ecosystemVignette,
+          { opacity: 1.0 },
+          {
+            opacity: 0.0,
+            ease: 'power1.inOut',
+            duration: 0.14
+          },
+          0.68
+        );
+      }
+
+      /* 11. PAGE 3 READING PAUSE (Progress 0.78 to 0.84): Ecosystem content fully visible & interactive */
+
+      /* 12. PAGE 3 CARD SHRINK + PAGE 4 SLIDES ABOVE IN FULL OPACITY (Progress 0.78 to 0.88)
+             - Page 3 acts like a physical card: shrinks in size from all sides, rounds corners,
+               and fades completely to opacity: 0 as Page 4 overlays above it.
+             - Page 4 slides cleanly ABOVE Page 3 (z-index: 45) in full opacity (bg-[#FAFAFA]),
+               starting with rounded top corners and ambient drop shadow, then expanding into full bleed! */
+      if (ecosystemLayer) {
+        zoomTimeline.to(ecosystemLayer, {
+          scale: function () {
+            var w = window.innerWidth;
+            if (w < 480) return 0.94;
+            if (w < 768) return 0.92;
+            if (w < 1024) return 0.91;
+            return 0.89;
+          },
+          borderRadius: function () {
+            var w = window.innerWidth;
+            if (w < 480) return '18px';
+            if (w < 768) return '24px';
+            return '36px';
+          },
+          boxShadow: '0 35px 85px -15px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.11), 0 0 45px rgba(163, 230, 53, 0.08)',
+          y: function () { return window.innerWidth < 768 ? -12 : -22; },
+          opacity: 0,
+          ease: 'power2.inOut',
+          duration: 0.10,
+          force3D: true
+        }, 0.78);
+      }
+
+      if (waitlistLayer) {
+        zoomTimeline.fromTo(waitlistLayer,
+          {
+            yPercent: 100,
+            y: 0,
+            borderTopLeftRadius: function () {
+              var w = window.innerWidth;
+              if (w < 480) return '18px';
+              if (w < 768) return '24px';
+              return '36px';
+            },
+            borderTopRightRadius: function () {
+              var w = window.innerWidth;
+              if (w < 480) return '18px';
+              if (w < 768) return '24px';
+              return '36px';
+            },
+            boxShadow: '0 -28px 70px rgba(0, 0, 0, 0.75)'
+          },
+          {
+            yPercent: 0,
+            y: 0,
+            borderTopLeftRadius: '0px',
+            borderTopRightRadius: '0px',
+            boxShadow: '0 0 0 rgba(0, 0, 0, 0)',
+            ease: 'power2.inOut',
+            duration: 0.10,
+            force3D: true
+          },
+          0.78
+        );
+      }
+
+      /* Creative Touch: Inner Counter-Parallax on Page 4 background artwork */
+      if (page4BgLayer) {
+        zoomTimeline.fromTo(page4BgLayer,
+          { y: 60, scale: 1.06 },
+          { y: 0, scale: 1.0, ease: 'power2.out', duration: 0.10, force3D: true },
+          0.78
+        );
+      }
+
+      /* Creative Touch: Parallax float on Page 4 headline, copy and CTA */
+      if (page4Content) {
+        zoomTimeline.fromTo(page4Content,
+          { y: 30, opacity: 0.70 },
+          { y: 0, opacity: 1.0, ease: 'power2.out', duration: 0.10, force3D: true },
+          0.79
+        );
+      }
+
+      /* Creative Touch: Tactile card sheet handle fades away as full bleed is locked */
+      if (page4SheetHandle) {
+        zoomTimeline.fromTo(page4SheetHandle,
+          { opacity: 1 },
+          { opacity: 0, ease: 'power1.in', duration: 0.03 },
+          0.85
+        );
+      }
+
+      /* 13. PAGE 4 COMFORTABLE PRESENCE ON SCREEN (Progress 0.88 to 1.00)
+             Page 4 ("Cross the bridge with the people who get it" / "Join the waitlist")
+             remains 100% visible, stable, full-bleed, and interactive on the display! */
+      zoomTimeline.to({}, { duration: 0.12 }, 0.88);
+
+      /* Smooth Anchor Navigation for #hero, #mission, #ecosystem, and #waitlist */
+      var missionAnchors = document.querySelectorAll('a[href="#mission"]');
+      missionAnchors.forEach(function (link) {
+        link.addEventListener('click', function (e) {
+          e.preventDefault();
+          var trigger = ScrollTrigger.getById('hero-scroll-zoom');
+          if (trigger) {
+            var targetScroll = trigger.start + (trigger.end - trigger.start) * 0.35;
+            window.scrollTo({ top: targetScroll, behavior: 'smooth' });
+          }
+        });
+      });
+
+      var ecosystemAnchors = document.querySelectorAll('a[href="#ecosystem"]');
+      ecosystemAnchors.forEach(function (link) {
+        link.addEventListener('click', function (e) {
+          e.preventDefault();
+          var trigger = ScrollTrigger.getById('hero-scroll-zoom');
+          if (trigger) {
+            var targetScroll = trigger.start + (trigger.end - trigger.start) * 0.80;
+            window.scrollTo({ top: targetScroll, behavior: 'smooth' });
+          }
+        });
+      });
+
+      var waitlistAnchors = document.querySelectorAll('a[href="#waitlist"]');
+      waitlistAnchors.forEach(function (link) {
+        link.addEventListener('click', function (e) {
+          e.preventDefault();
+          var trigger = ScrollTrigger.getById('hero-scroll-zoom');
+          if (trigger) {
+            var targetScroll = trigger.start + (trigger.end - trigger.start) * 0.94;
+            window.scrollTo({ top: targetScroll, behavior: 'smooth' });
+          }
+        });
+      });
+
+      var heroAnchors = document.querySelectorAll('a[href="#hero"]');
+      heroAnchors.forEach(function (link) {
+        link.addEventListener('click', function (e) {
+          e.preventDefault();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      });
+
+      /* Debounced window resize handler to keep ScrollTrigger pixel-perfect on any tab or screen resize */
+      var resizeTimeout;
+      window.addEventListener('resize', function () {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function () {
+          ScrollTrigger.refresh();
+        }, 120);
+      });
+    });
   </script>
 
 
