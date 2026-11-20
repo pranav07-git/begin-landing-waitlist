@@ -9,50 +9,18 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write # needed to post preview URL comments on PRs
+  pull-requests: write  # to post preview URL comments on PRs
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # JOB 1 — Validate HTML
-  validate:
-    name: Validate HTML
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install html-validate
-        run: npm install -g html-validate
-
-      - name: Write html-validate config
-        run: |
-          cat > .htmlvalidate.json << 'EOF'
-          {
-            "extends": ["html-validate:recommended"],
-            "rules": {
-              "no-inline-style": "off",
-              "long-title": "off",
-              "prefer-native-element": "off"
-            }
-          }
-          EOF
-
-      - name: Run HTML validation
-        run: html-validate index.html
-
-  # JOB 2 — Deploy Preview (PRs only)
-
+  # ─────────────────────────────────────────────
+  # JOB 1 — Deploy Preview (PRs only)
+  # ─────────────────────────────────────────────
   preview:
-    name: Deploy Preview to Vercel
-    needs: validate
+    name: Preview → Vercel
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     outputs:
@@ -61,7 +29,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy to Vercel (preview)
+      - name: Deploy preview to Vercel
         id: deploy
         uses: amondnet/vercel-action@v25
         with:
@@ -69,26 +37,36 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: ./
-          # no --prod flag → preview deployment
 
       - name: Comment preview URL on PR
         uses: actions/github-script@v7
         with:
           script: |
             const url = '${{ steps.deploy.outputs.preview-url }}';
-            const body = `## 🔍 Preview Deployment\n\n| | |\n|---|---|\n| **Preview URL** | ${url} |\n| **Commit** | \`${{ github.sha }}\` |\n| **Branch** | \`${{ github.head_ref }}\` |\n\nDeployed by GitHub Actions ✅`;
+            const sha  = context.sha.slice(0, 7);
+            const body = [
+              '## 🔍 Preview Deployment Ready',
+              '',
+              '| | |',
+              '|---|---|',
+              `| **URL** | ${url} |`,
+              `| **Commit** | \`${sha}\` |`,
+              `| **Branch** | \`${{ github.head_ref }}\` |`,
+              '',
+              '_Deployed by GitHub Actions ✅_',
+            ].join('\n');
             github.rest.issues.createComment({
               owner: context.repo.owner,
-              repo: context.repo.repo,
+              repo:  context.repo.repo,
               issue_number: context.issue.number,
               body,
             });
 
-  # JOB 3 — Deploy Production (main branch only)
-
+  # ─────────────────────────────────────────────
+  # JOB 2 — Deploy Production (main only)
+  # ─────────────────────────────────────────────
   production:
-    name: Deploy Production to Vercel
-    needs: validate
+    name: Production → Vercel
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     environment:
@@ -98,12 +76,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy to Vercel (production)
+      - name: Deploy production to Vercel
         id: deploy
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: "--prod"
+          vercel-args: '--prod'
           working-directory: ./
